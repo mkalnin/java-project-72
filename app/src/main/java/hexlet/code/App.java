@@ -4,7 +4,9 @@ import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
 import gg.jte.resolve.DirectoryCodeResolver;
 import gg.jte.resolve.ResourceCodeResolver;
+import hexlet.code.controller.UrlCheckController;
 import hexlet.code.controller.UrlController;
+import hexlet.code.repository.UrlCheckRepository;
 import hexlet.code.repository.UrlRepository;
 import io.javalin.Javalin;
 import io.javalin.http.staticfiles.Location;
@@ -30,7 +32,9 @@ public class App {
 
     public static Javalin getApp() {
         var urlRepository = new UrlRepository(Database.getDataSource());
-        var urlController = new UrlController(urlRepository);
+        var urlCheckRepository = new UrlCheckRepository(Database.getDataSource());
+        var urlController = new UrlController(urlRepository, urlCheckRepository);
+        var urlCheckController = new UrlCheckController(urlRepository, urlCheckRepository);
 
         return Javalin.create(config -> {
             config.bundledPlugins.enableDevLogging();
@@ -53,6 +57,7 @@ public class App {
             config.routes.post("/urls", urlController::create);
             config.routes.get("/urls", urlController::index);
             config.routes.get("/urls/{id}", urlController::show);
+            config.routes.post("/urls/{id}/checks", urlCheckController::create);
         });
     }
 

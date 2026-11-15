@@ -1,6 +1,7 @@
 package hexlet.code.controller;
 
 import hexlet.code.model.Url;
+import hexlet.code.repository.UrlCheckRepository;
 import hexlet.code.repository.UrlRepository;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
@@ -14,14 +15,26 @@ import java.util.Map;
 
 public class UrlController {
     private final UrlRepository urlRepository;
+    private final UrlCheckRepository urlCheckRepository;
 
-    public UrlController(UrlRepository urlRepository) {
+    public UrlController(UrlRepository urlRepository, UrlCheckRepository urlCheckRepository) {
         this.urlRepository = urlRepository;
+        this.urlCheckRepository = urlCheckRepository;
     }
 
     public void index(Context ctx) throws SQLException {
+        var lastChecks = urlCheckRepository.findLastChecks();
+        var lastCheckDates = new HashMap<Long, String>();
+        var lastCheckStatuses = new HashMap<Long, String>();
+        lastChecks.forEach((urlId, check) -> {
+            lastCheckDates.put(urlId, check.getCreatedAt().toLocalDateTime().toLocalDate().toString());
+            lastCheckStatuses.put(urlId, check.getStatusCode().toString());
+        });
+
         var model = new HashMap<String, Object>();
         model.put("urls", urlRepository.findAll());
+        model.put("lastCheckDates", lastCheckDates);
+        model.put("lastCheckStatuses", lastCheckStatuses);
         putFlash(ctx, model);
         ctx.render("urls/index.jte", model);
     }
@@ -38,6 +51,7 @@ public class UrlController {
         }
         var model = new HashMap<String, Object>();
         model.put("url", url);
+        model.put("checks", urlCheckRepository.findByUrlId(id));
         putFlash(ctx, model);
         ctx.render("urls/show.jte", model);
     }
