@@ -67,7 +67,40 @@ class UrlCheckControllerTest extends AppTest {
             var body = showResponse.body().string();
             assertThat(body).contains("data-test=\"checks\"");
             assertThat(body).contains("200");
+            assertThat(body).contains("Test h1");
+            assertThat(body).contains("Test title");
+            assertThat(body).contains("Test description");
         });
+    }
+
+    @Test
+    void testLongValuesAreTruncated() {
+        var longText = "a".repeat(250);
+        mockServer.enqueue(new MockResponse()
+                .setBody("<html><head><title>" + longText + "</title>"
+                        + "<meta name=\"description\" content=\"" + longText + "\"></head>"
+                        + "<body><h1>" + longText + "</h1></body></html>")
+                .setResponseCode(200));
+
+        runTest((server, client) -> {
+            client.post("/urls", "url=" + serverUrl());
+            var url = urlRepository().findAll().get(0);
+            client.post("/urls/" + url.getId() + "/checks");
+
+            var body = client.get("/urls/" + url.getId()).body().string();
+            assertThat(body).contains("a".repeat(200) + "...");
+            assertThat(body).doesNotContain("a".repeat(201));
+        });
+    }
+
+    @Test
+    void testTruncate() {
+        assertThat(hexlet.code.controller.UrlCheckController.truncate(null)).isEmpty();
+        assertThat(hexlet.code.controller.UrlCheckController.truncate("short")).isEqualTo("short");
+        assertThat(hexlet.code.controller.UrlCheckController.truncate("b".repeat(200)))
+                .isEqualTo("b".repeat(200));
+        assertThat(hexlet.code.controller.UrlCheckController.truncate("c".repeat(201)))
+                .isEqualTo("c".repeat(200) + "...");
     }
 
     @Test

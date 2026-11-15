@@ -61,6 +61,13 @@ public class UrlCheckController {
         ctx.redirect("/urls/" + id);
     }
 
+    public static String truncate(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() > 200 ? value.substring(0, 200) + "..." : value;
+    }
+
     private static void putFlash(Context ctx, Map<String, Object> model) {
         model.put("flash", ctx.sessionAttribute("flash"));
         model.put("flashType", ctx.sessionAttribute("flashType"));

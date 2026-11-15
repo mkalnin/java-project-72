@@ -35,6 +35,9 @@
             <tr class="border-b border-gray-300">
                 <th class="py-2 pr-4">ID</th>
                 <th class="py-2 pr-4">Код ответа</th>
+                <th class="py-2 pr-4">h1</th>
+                <th class="py-2 pr-4">title</th>
+                <th class="py-2 pr-4">description</th>
                 <th class="py-2 pr-4">Дата создания</th>
             </tr>
         </thead>
@@ -43,6 +46,9 @@
                 <tr class="border-b border-gray-200">
                     <td class="py-2 pr-4">${check.getId()}</td>
                     <td class="py-2 pr-4">${check.getStatusCode()}</td>
+                    <td class="py-2 pr-4">${hexlet.code.controller.UrlCheckController.truncate(check.getH1())}</td>
+                    <td class="py-2 pr-4">${hexlet.code.controller.UrlCheckController.truncate(check.getTitle())}</td>
+                    <td class="py-2 pr-4">${hexlet.code.controller.UrlCheckController.truncate(check.getDescription())}</td>
                     <td class="py-2 pr-4">${check.getCreatedAt().toLocalDateTime().toLocalDate().toString()}</td>
                 </tr>
             @endfor
