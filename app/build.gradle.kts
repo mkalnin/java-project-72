@@ -1,6 +1,8 @@
 plugins {
     application
     id("com.gradleup.shadow") version "8.3.6"
+    jacoco
+    id("org.sonarqube") version "7.5.0.8588"
 }
 
 group = "hexlet.code"
@@ -21,6 +23,8 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("io.javalin:javalin-testtools:7.0.0")
+    testImplementation("org.assertj:assertj-core:3.27.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -30,4 +34,21 @@ application {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "mkalnin_java-project-72")
+        property("sonar.organization", "mkalnin")
+        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
+    }
 }
