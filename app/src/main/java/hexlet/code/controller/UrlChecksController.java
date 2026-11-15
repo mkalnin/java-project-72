@@ -10,13 +10,14 @@ import org.jsoup.Jsoup;
 
 import java.sql.SQLException;
 import java.util.HashMap;
-import java.util.Map;
 
-public class UrlCheckController {
+public class UrlChecksController {
+    private static final int MAX_TEXT_LENGTH = 200;
+
     private final UrlRepository urlRepository;
     private final UrlCheckRepository urlCheckRepository;
 
-    public UrlCheckController(UrlRepository urlRepository, UrlCheckRepository urlCheckRepository) {
+    public UrlChecksController(UrlRepository urlRepository, UrlCheckRepository urlCheckRepository) {
         this.urlRepository = urlRepository;
         this.urlCheckRepository = urlCheckRepository;
     }
@@ -27,7 +28,7 @@ public class UrlCheckController {
         if (url == null) {
             ctx.status(HttpStatus.NOT_FOUND);
             var model = new HashMap<String, Object>();
-            putFlash(ctx, model);
+            Flash.put(ctx, model);
             ctx.render("errors/404.jte", model);
             return;
         }
@@ -36,8 +37,7 @@ public class UrlCheckController {
             var response = Unirest.get(url.getName()).asString();
             var statusCode = response.getStatus();
             if (statusCode >= 400) {
-                ctx.sessionAttribute("flash", "Произошла ошибка при проверке");
-                ctx.sessionAttribute("flashType", "error");
+                Flash.set(ctx, "Произошла ошибка при проверке", "error");
                 ctx.redirect("/urls/" + id);
                 return;
             }
@@ -52,11 +52,9 @@ public class UrlCheckController {
             var check = new UrlCheck(id, statusCode, title, h1, description);
             urlCheckRepository.save(check);
 
-            ctx.sessionAttribute("flash", "Страница успешно проверена");
-            ctx.sessionAttribute("flashType", "success");
+            Flash.set(ctx, "Страница успешно проверена", "success");
         } catch (Exception e) {
-            ctx.sessionAttribute("flash", "Произошла ошибка при проверке");
-            ctx.sessionAttribute("flashType", "error");
+            Flash.set(ctx, "Произошла ошибка при проверке", "error");
         }
         ctx.redirect("/urls/" + id);
     }
@@ -65,13 +63,8 @@ public class UrlCheckController {
         if (value == null) {
             return "";
         }
-        return value.length() > 200 ? value.substring(0, 200) + "..." : value;
-    }
-
-    private static void putFlash(Context ctx, Map<String, Object> model) {
-        model.put("flash", ctx.sessionAttribute("flash"));
-        model.put("flashType", ctx.sessionAttribute("flashType"));
-        ctx.consumeSessionAttribute("flash");
-        ctx.consumeSessionAttribute("flashType");
+        return value.length() > MAX_TEXT_LENGTH
+                ? value.substring(0, MAX_TEXT_LENGTH) + "..."
+                : value;
     }
 }

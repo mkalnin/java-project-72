@@ -1,6 +1,5 @@
 @param String flash
 @param String flashType
-@param String input
 
 @template.layout(content = @`
     <div class="mx-auto max-w-3xl rounded-lg border border-gray-200 bg-gray-50 p-10">
@@ -17,7 +16,6 @@
                     name="url"
                     class="w-full rounded text-lg"
                     placeholder="https://www.example.com"
-                    value="${input == null ? "" : input}"
                 />
             </div>
             <input

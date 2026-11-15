@@ -46,9 +46,9 @@
                 <tr class="border-b border-gray-200">
                     <td class="py-2 pr-4">${check.getId()}</td>
                     <td class="py-2 pr-4">${check.getStatusCode()}</td>
-                    <td class="py-2 pr-4">${hexlet.code.controller.UrlCheckController.truncate(check.getH1())}</td>
-                    <td class="py-2 pr-4">${hexlet.code.controller.UrlCheckController.truncate(check.getTitle())}</td>
-                    <td class="py-2 pr-4">${hexlet.code.controller.UrlCheckController.truncate(check.getDescription())}</td>
+                    <td class="py-2 pr-4">${hexlet.code.controller.UrlChecksController.truncate(check.getH1())}</td>
+                    <td class="py-2 pr-4">${hexlet.code.controller.UrlChecksController.truncate(check.getTitle())}</td>
+                    <td class="py-2 pr-4">${hexlet.code.controller.UrlChecksController.truncate(check.getDescription())}</td>
                     <td class="py-2 pr-4">${check.getCreatedAt().toLocalDateTime().toLocalDate().toString()}</td>
                 </tr>
             @endfor

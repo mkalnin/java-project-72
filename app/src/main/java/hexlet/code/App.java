@@ -4,8 +4,9 @@ import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
 import gg.jte.resolve.DirectoryCodeResolver;
 import gg.jte.resolve.ResourceCodeResolver;
-import hexlet.code.controller.UrlCheckController;
-import hexlet.code.controller.UrlController;
+import hexlet.code.controller.Flash;
+import hexlet.code.controller.UrlChecksController;
+import hexlet.code.controller.UrlsController;
 import hexlet.code.repository.UrlCheckRepository;
 import hexlet.code.repository.UrlRepository;
 import io.javalin.Javalin;
@@ -17,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.HashMap;
-import java.util.Map;
 
 public class App {
     private static final Path TEMPLATES_PATH = Path.of("src", "main", "resources", "templates");
@@ -33,8 +33,8 @@ public class App {
     public static Javalin getApp() {
         var urlRepository = new UrlRepository(Database.getDataSource());
         var urlCheckRepository = new UrlCheckRepository(Database.getDataSource());
-        var urlController = new UrlController(urlRepository, urlCheckRepository);
-        var urlCheckController = new UrlCheckController(urlRepository, urlCheckRepository);
+        var urlsController = new UrlsController(urlRepository, urlCheckRepository);
+        var urlChecksController = new UrlChecksController(urlRepository, urlCheckRepository);
 
         return Javalin.create(config -> {
             config.bundledPlugins.enableDevLogging();
@@ -48,16 +48,15 @@ public class App {
 
             config.routes.get("/", ctx -> {
                 var model = new HashMap<String, Object>();
-                model.put("flash", ctx.sessionAttribute("flash"));
-                model.put("flashType", ctx.sessionAttribute("flashType"));
-                ctx.consumeSessionAttribute("flash");
-                ctx.consumeSessionAttribute("flashType");
+                Flash.put(ctx, model);
                 ctx.render("index.jte", model);
             });
-            config.routes.post("/urls", urlController::create);
-            config.routes.get("/urls", urlController::index);
-            config.routes.get("/urls/{id}", urlController::show);
-            config.routes.post("/urls/{id}/checks", urlCheckController::create);
+
+            config.routes.get("/urls", urlsController::index);
+            config.routes.get("/urls/new", urlsController::newForm);
+            config.routes.post("/urls", urlsController::create);
+            config.routes.get("/urls/{id}", urlsController::show);
+            config.routes.post("/urls/{id}/checks", urlChecksController::create);
         });
     }
 

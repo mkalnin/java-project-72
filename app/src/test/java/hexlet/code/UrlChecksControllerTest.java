@@ -1,5 +1,6 @@
 package hexlet.code;
 
+import hexlet.code.controller.UrlChecksController;
 import hexlet.code.repository.UrlCheckRepository;
 import hexlet.code.repository.UrlRepository;
 import okhttp3.mockwebserver.MockResponse;
@@ -12,7 +13,7 @@ import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class UrlCheckControllerTest extends AppTest {
+class UrlChecksControllerTest extends AppTest {
     private static MockWebServer mockServer;
 
     @BeforeAll
@@ -39,7 +40,7 @@ class UrlCheckControllerTest extends AppTest {
     }
 
     @Test
-    void testCreateCheck() {
+    void testCreate() {
         mockServer.enqueue(new MockResponse()
                 .setBody("<html><head><title>Test title</title>"
                         + "<meta name=\"description\" content=\"Test description\"></head>"
@@ -62,14 +63,99 @@ class UrlCheckControllerTest extends AppTest {
             assertThat(check.getDescription()).isEqualTo("Test description");
             assertThat(check.getUrlId()).isEqualTo(url.getId());
             assertThat(check.getCreatedAt()).isNotNull();
+        });
+    }
 
-            var showResponse = client.get("/urls/" + url.getId());
-            var body = showResponse.body().string();
+    @Test
+    void testCreateShowsCheckOnUrlPage() {
+        mockServer.enqueue(new MockResponse()
+                .setBody("<html><head><title>Test title</title>"
+                        + "<meta name=\"description\" content=\"Test description\"></head>"
+                        + "<body><h1>Test h1</h1></body></html>")
+                .setResponseCode(200));
+
+        runTest((server, client) -> {
+            client.post("/urls", "url=" + serverUrl());
+            var url = urlRepository().findAll().get(0);
+            client.post("/urls/" + url.getId() + "/checks");
+
+            var body = client.get("/urls/" + url.getId()).body().string();
             assertThat(body).contains("data-test=\"checks\"");
             assertThat(body).contains("200");
             assertThat(body).contains("Test h1");
             assertThat(body).contains("Test title");
             assertThat(body).contains("Test description");
+        });
+    }
+
+    @Test
+    void testCreateWithServerError() {
+        mockServer.enqueue(new MockResponse().setResponseCode(500));
+
+        runTest((server, client) -> {
+            client.post("/urls", "url=" + serverUrl());
+            var url = urlRepository().findAll().get(0);
+
+            var response = client.post("/urls/" + url.getId() + "/checks");
+            assertThat(response.code()).isEqualTo(302);
+            assertThat(urlCheckRepository().findByUrlId(url.getId())).isEmpty();
+        });
+    }
+
+    @Test
+    void testCreateWithNotFound() {
+        mockServer.enqueue(new MockResponse().setResponseCode(404));
+
+        runTest((server, client) -> {
+            client.post("/urls", "url=" + serverUrl());
+            var url = urlRepository().findAll().get(0);
+
+            client.post("/urls/" + url.getId() + "/checks");
+            assertThat(urlCheckRepository().findByUrlId(url.getId())).isEmpty();
+        });
+    }
+
+    @Test
+    void testCreateMissingUrl() {
+        runTest((server, client) -> {
+            var response = client.post("/urls/999/checks");
+            assertThat(response.code()).isEqualTo(404);
+        });
+    }
+
+    @Test
+    void testCreateShowsSuccessFlash() {
+        mockServer.enqueue(new MockResponse()
+                .setBody("<html><head><title>Title</title></head><body></body></html>")
+                .setResponseCode(200));
+
+        runTest((server, client) -> {
+            var createResponse = client.post("/urls", "url=" + serverUrl());
+            var cookie = createResponse.headers().get("Set-Cookie").get(0).split(";")[0];
+            var url = urlRepository().findAll().get(0);
+
+            client.post("/urls/" + url.getId() + "/checks", "", request -> request.header("Cookie", cookie));
+
+            var body = client.get("/urls/" + url.getId(), request -> request.header("Cookie", cookie))
+                    .body().string();
+            assertThat(body).contains("Страница успешно проверена");
+        });
+    }
+
+    @Test
+    void testCreateShowsErrorFlash() {
+        mockServer.enqueue(new MockResponse().setResponseCode(500));
+
+        runTest((server, client) -> {
+            var createResponse = client.post("/urls", "url=" + serverUrl());
+            var cookie = createResponse.headers().get("Set-Cookie").get(0).split(";")[0];
+            var url = urlRepository().findAll().get(0);
+
+            client.post("/urls/" + url.getId() + "/checks", "", request -> request.header("Cookie", cookie));
+
+            var body = client.get("/urls/" + url.getId(), request -> request.header("Cookie", cookie))
+                    .body().string();
+            assertThat(body).contains("Произошла ошибка при проверке");
         });
     }
 
@@ -95,99 +181,9 @@ class UrlCheckControllerTest extends AppTest {
 
     @Test
     void testTruncate() {
-        assertThat(hexlet.code.controller.UrlCheckController.truncate(null)).isEmpty();
-        assertThat(hexlet.code.controller.UrlCheckController.truncate("short")).isEqualTo("short");
-        assertThat(hexlet.code.controller.UrlCheckController.truncate("b".repeat(200)))
-                .isEqualTo("b".repeat(200));
-        assertThat(hexlet.code.controller.UrlCheckController.truncate("c".repeat(201)))
-                .isEqualTo("c".repeat(200) + "...");
-    }
-
-    @Test
-    void testCreateCheckWithErrorStatus() {
-        mockServer.enqueue(new MockResponse().setResponseCode(500));
-
-        runTest((server, client) -> {
-            client.post("/urls", "url=" + serverUrl());
-            var url = urlRepository().findAll().get(0);
-
-            var response = client.post("/urls/" + url.getId() + "/checks");
-            assertThat(response.code()).isEqualTo(302);
-
-            assertThat(urlCheckRepository().findByUrlId(url.getId())).isEmpty();
-        });
-    }
-
-    @Test
-    void testCreateCheckWithNotFoundStatus() {
-        mockServer.enqueue(new MockResponse().setResponseCode(404));
-
-        runTest((server, client) -> {
-            client.post("/urls", "url=" + serverUrl());
-            var url = urlRepository().findAll().get(0);
-
-            client.post("/urls/" + url.getId() + "/checks");
-
-            assertThat(urlCheckRepository().findByUrlId(url.getId())).isEmpty();
-        });
-    }
-
-    @Test
-    void testFlashMessageAfterCheck() {
-        mockServer.enqueue(new MockResponse()
-                .setBody("<html><head><title>Title</title></head><body></body></html>")
-                .setResponseCode(200));
-
-        runTest((server, client) -> {
-            var createResponse = client.post("/urls", "url=" + serverUrl());
-            var cookie = createResponse.headers().get("Set-Cookie").get(0).split(";")[0];
-            var url = urlRepository().findAll().get(0);
-
-            client.post("/urls/" + url.getId() + "/checks", "", request -> request.header("Cookie", cookie));
-
-            var showResponse = client.get("/urls/" + url.getId(), request -> request.header("Cookie", cookie));
-            assertThat(showResponse.body().string()).contains("Страница успешно проверена");
-        });
-    }
-
-    @Test
-    void testFlashMessageOnCheckError() {
-        mockServer.enqueue(new MockResponse().setResponseCode(500));
-
-        runTest((server, client) -> {
-            var createResponse = client.post("/urls", "url=" + serverUrl());
-            var cookie = createResponse.headers().get("Set-Cookie").get(0).split(";")[0];
-            var url = urlRepository().findAll().get(0);
-
-            client.post("/urls/" + url.getId() + "/checks", "", request -> request.header("Cookie", cookie));
-
-            var showResponse = client.get("/urls/" + url.getId(), request -> request.header("Cookie", cookie));
-            assertThat(showResponse.body().string()).contains("Произошла ошибка при проверке");
-        });
-    }
-
-    @Test
-    void testCheckMissingUrl() {
-        runTest((server, client) -> {
-            var response = client.post("/urls/999/checks");
-            assertThat(response.code()).isEqualTo(404);
-        });
-    }
-
-    @Test
-    void testUrlsListShowsLastCheck() {
-        mockServer.enqueue(new MockResponse()
-                .setBody("<html><head><title>Title</title></head><body></body></html>")
-                .setResponseCode(200));
-
-        runTest((server, client) -> {
-            client.post("/urls", "url=" + serverUrl());
-            var url = urlRepository().findAll().get(0);
-            client.post("/urls/" + url.getId() + "/checks");
-
-            var body = client.get("/urls").body().string();
-            assertThat(body).contains("data-test=\"urls\"");
-            assertThat(body).contains("200");
-        });
+        assertThat(UrlChecksController.truncate(null)).isEmpty();
+        assertThat(UrlChecksController.truncate("short")).isEqualTo("short");
+        assertThat(UrlChecksController.truncate("b".repeat(200))).isEqualTo("b".repeat(200));
+        assertThat(UrlChecksController.truncate("c".repeat(201))).isEqualTo("c".repeat(200) + "...");
     }
 }

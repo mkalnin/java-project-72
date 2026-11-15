@@ -13,11 +13,11 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class UrlController {
+public class UrlsController {
     private final UrlRepository urlRepository;
     private final UrlCheckRepository urlCheckRepository;
 
-    public UrlController(UrlRepository urlRepository, UrlCheckRepository urlCheckRepository) {
+    public UrlsController(UrlRepository urlRepository, UrlCheckRepository urlCheckRepository) {
         this.urlRepository = urlRepository;
         this.urlCheckRepository = urlCheckRepository;
     }
@@ -35,8 +35,15 @@ public class UrlController {
         model.put("urls", urlRepository.findAll());
         model.put("lastCheckDates", lastCheckDates);
         model.put("lastCheckStatuses", lastCheckStatuses);
-        putFlash(ctx, model);
+        Flash.put(ctx, model);
         ctx.render("urls/index.jte", model);
+    }
+
+    public void newForm(Context ctx) {
+        var model = new HashMap<String, Object>();
+        model.put("input", "");
+        Flash.put(ctx, model);
+        ctx.render("urls/new.jte", model);
     }
 
     public void show(Context ctx) throws SQLException {
@@ -45,14 +52,14 @@ public class UrlController {
         if (url == null) {
             ctx.status(HttpStatus.NOT_FOUND);
             var model = new HashMap<String, Object>();
-            putFlash(ctx, model);
+            Flash.put(ctx, model);
             ctx.render("errors/404.jte", model);
             return;
         }
         var model = new HashMap<String, Object>();
         model.put("url", url);
         model.put("checks", urlCheckRepository.findByUrlId(id));
-        putFlash(ctx, model);
+        Flash.put(ctx, model);
         ctx.render("urls/show.jte", model);
     }
 
@@ -62,34 +69,25 @@ public class UrlController {
 
         if (normalized == null) {
             ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
-            ctx.render("index.jte", Map.of(
-                    "flash", "Некорректный URL",
-                    "flashType", "error",
-                    "input", input == null ? "" : input
-            ));
+            var model = new HashMap<String, Object>();
+            model.put("flash", "Некорректный URL");
+            model.put("flashType", "error");
+            model.put("input", input == null ? "" : input);
+            ctx.render("urls/new.jte", model);
             return;
         }
 
         var existing = urlRepository.findByName(normalized);
         if (existing.isPresent()) {
-            ctx.sessionAttribute("flash", "Страница уже существует");
-            ctx.sessionAttribute("flashType", "info");
+            Flash.set(ctx, "Страница уже существует", "info");
             ctx.redirect("/urls/" + existing.get().getId());
             return;
         }
 
         var url = new Url(normalized);
         urlRepository.save(url);
-        ctx.sessionAttribute("flash", "Страница успешно добавлена");
-        ctx.sessionAttribute("flashType", "success");
+        Flash.set(ctx, "Страница успешно добавлена", "success");
         ctx.redirect("/urls/" + url.getId());
-    }
-
-    private static void putFlash(Context ctx, Map<String, Object> model) {
-        model.put("flash", ctx.sessionAttribute("flash"));
-        model.put("flashType", ctx.sessionAttribute("flashType"));
-        ctx.consumeSessionAttribute("flash");
-        ctx.consumeSessionAttribute("flashType");
     }
 
     private static String normalize(String input) {
