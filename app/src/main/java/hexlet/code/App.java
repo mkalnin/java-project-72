@@ -4,6 +4,8 @@ import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
 import gg.jte.resolve.DirectoryCodeResolver;
 import gg.jte.resolve.ResourceCodeResolver;
+import hexlet.code.controller.UrlController;
+import hexlet.code.repository.UrlRepository;
 import io.javalin.Javalin;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.rendering.template.JavalinJte;
@@ -12,6 +14,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class App {
     private static final Path TEMPLATES_PATH = Path.of("src", "main", "resources", "templates");
@@ -25,6 +29,9 @@ public class App {
     }
 
     public static Javalin getApp() {
+        var urlRepository = new UrlRepository(Database.getDataSource());
+        var urlController = new UrlController(urlRepository);
+
         return Javalin.create(config -> {
             config.bundledPlugins.enableDevLogging();
             config.fileRenderer(new JavalinJte(createTemplateEngine()));
@@ -35,7 +42,17 @@ public class App {
                 config.staticFiles.add("/static", Location.CLASSPATH);
             }
 
-            config.routes.get("/", ctx -> ctx.render("index.jte"));
+            config.routes.get("/", ctx -> {
+                var model = new HashMap<String, Object>();
+                model.put("flash", ctx.sessionAttribute("flash"));
+                model.put("flashType", ctx.sessionAttribute("flashType"));
+                ctx.consumeSessionAttribute("flash");
+                ctx.consumeSessionAttribute("flashType");
+                ctx.render("index.jte", model);
+            });
+            config.routes.post("/urls", urlController::create);
+            config.routes.get("/urls", urlController::index);
+            config.routes.get("/urls/{id}", urlController::show);
         });
     }
 
